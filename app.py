@@ -1,8 +1,8 @@
 import streamlit as st
-from src.chat_session_manager import ChatSessionManager
+from ui.chat_session_manager import ChatSessionManager
 
 # Streamlit UI entrypoint
-st.title("PingoChat")
+st.title("AutismyVR Chat")
 st.write("Hello 👋")
 
 # Initialize chat history if it doesn't exist

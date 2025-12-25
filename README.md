@@ -1,46 +1,73 @@
-# Stream Lit local ChatBot
+# AutismyVR AI Service
 
-1. Install OLLAMA from it WebSite: https://ollama.com/
-2. Run a OLLAMA model: `$ ollama run llama3.2`
-3. Install Python3
-   1. MacOS: already installed
-   2. Windows: download it from the site: https://www.python.org/downloads/
-4. Install pip3
-   1. MacOS: already installed
-   2. Windows: 
-      1. `> curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py`
-      2. `> python get-pip.py`
-5. Install+Generate+Activate pyenv:
-   1. **create** your local venv:
-      1. Windows: 
-         1. CMD: `> python -m venv venv`
-         2. GitBash: `$ python -m venv venv`
-      2. MacOS: `$ python3 -m venv venv`
-   2. **activate** your local venv: 
-      1. MacOS: `$ source venv/bin/activate`
-      2. Windows:  
-         1. GitBash: `>  source venv/Scripts/activate`
-         2. CMD: `> venv\Scripts\activate`
-   3. **install** depnendencies: 
-      1. `$ brew install cmake apache-arrow`
-      2. `$ pip install -r requirements.txt`
-6. Run StreamLit: `$ streamlit run app.py`
-7. **PS.:** 
-   1. before running the streamlit:app on PyCharm it is necessary to run the command directly on the Terminal
-   2. on the terminal input/insert your email to sign on it 
-8. **PyCharm Debug**:
-   1. create a config run
-   2. if it raise any error on run/debug just delete and create a new run file:
-      1. set it to **module** instead of _script_
-      2. **module** value = `streamlit`
-      3. **script parameters** = `run app.py`
-   3. **IF** errors like: "asyncio\base_events.py:182" or "Python\Python312\Lib\asyncio\events.py", line 88" **you must disable**  `python.debug.asyncio.repl`:
-      1. click on seach icon (top right near to close button X)
-      2. type on the search input: "registry" and click on "registry..."
-      3. look for `python.debug.asyncio.repl` and uncheck the checkbox
+This repository provides AI services for the AutismyVR platform, including a Flask REST API and a Streamlit Debug UI, both integrated with a PostgreSQL database and LLM models.
 
-# Folders Structure
+## Architecture
 
-1. **experiments**: some backup code for reference future investigations
-2. **src**: the application source code for long run
-3. **app.py**: the application entry point
+- **API**: Flask REST API with Swagger documentation (`/apidocs`).
+- **UI**: Streamlit interface for chat and debugging.
+- **Database**: PostgreSQL for storing chat sessions and interactions.
+- **Services**: Shared logic in `src/` for consistent behavior across API and UI.
+- **Models**: Abstraction layer for LLM (Ollama) and other AI models.
+
+## Getting Started
+
+### Prerequisites
+
+- Docker and Docker Compose
+- Python 3.12 (for local development)
+
+### Running with Docker (Recommended)
+
+To start the entire stack (Postgres, API, UI):
+
+```bash
+docker-compose up -d --build
+```
+
+- **API Swagger**: http://localhost:5000/apidocs
+- **Streamlit UI**: http://localhost:8501
+
+### Local Development
+
+1. **Install Dependencies**:
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
+   ```
+
+2. **Run Tests**:
+   ```bash
+   export PYTHONPATH=.
+   pytest --cov=src --cov=api tests/
+   ```
+
+3. **Run API**:
+   ```bash
+   export PYTHONPATH=.
+   python api/app.py
+   ```
+
+4. **Run Streamlit**:
+   ```bash
+   export PYTHONPATH=.
+   streamlit run app.py
+   ```
+
+## Documentation
+
+- [Architecture Diagram and Details](docs/ARCHITECTURE.md)
+- [Project Wiki](docs/WIKI.md)
+
+## API Documentation
+
+The API is documented using Swagger. Once running, access it at `/apidocs`.
+
+## Testing
+
+The project includes Integration and BDD tests.
+- **Integration**: `tests/integration/`
+- **BDD**: `tests/bdd/` checking features in `tests/bdd/features/`
+
+CI/CD is configured via GitHub Actions.
