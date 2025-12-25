@@ -76,7 +76,9 @@ We implemented a **Custom Python Service using direct Ollama Client integration*
 
 The API is documented using Swagger. Once running, access it at `/apidocs`.
 
-**Authentication**: All API endpoints require Firebase Authentication. Include the Firebase ID token in the `Authorization` header as `Bearer <token>`. See [Firebase Setup Guide](docs/FIREBASE_SETUP.md) for configuration details.
+**Authentication**: All API endpoints require Firebase Authentication in staging and production environments. Include the Firebase ID token in the `Authorization` header as `Bearer <token>`. See [Firebase Setup Guide](docs/FIREBASE_SETUP.md) for configuration details.
+
+**Development Mode**: When `ENV_LEVEL=dev` (default), Firebase authentication is bypassed for testing purposes. In this mode, all requests are automatically authenticated with a mock user (`dev-user`). This allows testing the API without Firebase credentials. **Note**: Authentication bypass is only available in development. Staging (`ENV_LEVEL=stag`) and production (`ENV_LEVEL=prod`) environments require valid Firebase tokens.
 
 ## Testing
 

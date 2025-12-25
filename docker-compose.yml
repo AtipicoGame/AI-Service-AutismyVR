@@ -23,6 +23,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://user:password@postgres:5432/autismyvr
       - OLLAMA_HOST=http://host.docker.internal:11434
+      - ENV_LEVEL=dev
     depends_on:
       postgres:
         condition: service_healthy

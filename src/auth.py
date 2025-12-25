@@ -101,10 +101,15 @@ def get_firebase_user_from_request():
     return verify_firebase_token(token)
 
 
+def get_env_level():
+    env_level = os.getenv('ENV_LEVEL', 'dev').lower()
+    return env_level if env_level in ['dev', 'stag', 'prod'] else 'dev'
+
 def require_firebase_auth(f):
     """
     Decorator to require Firebase authentication for a route.
     Validates the Firebase ID token and stores user info in Flask's g object.
+    In dev environment, authentication is bypassed for testing purposes.
     
     Usage:
         @api_bp.route('/protected')
@@ -115,9 +120,15 @@ def require_firebase_auth(f):
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        env_level = get_env_level()
+        
+        if env_level == 'dev':
+            g.firebase_user = {'uid': 'dev-user', 'email': 'dev@test.com'}
+            g.firebase_uid = 'dev-user'
+            return f(*args, **kwargs)
+        
         try:
             decoded_token = get_firebase_user_from_request()
-            # Store user info in Flask's g for use in route handlers
             g.firebase_user = decoded_token
             g.firebase_uid = decoded_token['uid']
             return f(*args, **kwargs)
