@@ -50,3 +50,24 @@ Streamlit application for developer testing.
 
 The system is containerized for easy deployment via `docker-compose`. 
 CI/CD integration via GitHub Actions ensures tests pass on every commit.
+
+## Design Decisions
+
+### 1. Communication Protocol: HTTP REST over gRPC
+**Decision**: Use standard HTTP POST requests for chat interaction.
+**Context**: Real-time voice interaction often implies gRPC streaming.
+**Rationale**:
+- **Simplicity**: HTTP is stateless and widely supported.
+- **Server Effort**: Avoids managing persistent socket connections for thousands of potential users.
+- **Latency Strategy**: We accept the minor latency cost of "waiting for silence" (Post-Speech) in exchange for significant architectural simplicity. The Client is responsible for VAD (Voice Activity Detection).
+
+### 2. Implementation: Custom Python (Pure Ollama Client) vs n8n Agents
+**Decision**: Build a custom service using Flask and a **direct Ollama Client** (`src/models/ollama_client.py`).
+**Context**: 
+- **n8n Agents**: Provide high-level "drag and drop" agent nodes (LangChain based) that handle memory and tools automatically.
+- **Pure Client**: Manual handling of the prompt + context window loop.
+**Rationale**:
+- **Control vs Magic**: n8n Agent nodes abstract away the "Context Window" and memory management. For a VR avatar, we eventually need fine-grained control over exactly *what* the specifically user said (AudioSTT) and *how* the prompt is constructed to maintain the "Character".
+- **Performance**: A direct Python function call to an LLM API is faster (~10ms overhead) than an n8n workflow execution engine (~100ms+ overhead).
+- **Testing**: We need rigorous BDD and Integration testing (100% coverage). Testing a specific "Prompt Template" is trivial in Python unit tests but difficult inside a compiled n8n workflow.
+- **Code Reuse**: The same `OllamaClient` logic is imported directly by our Streamlit Debug UI, ensuring 1:1 parity between development and production.

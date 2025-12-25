@@ -9,3 +9,4 @@ pytest
 pytest-bdd
 pytest-cov
 requests
+firebase-admin

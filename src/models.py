@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Index
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from src.db import Base
@@ -7,7 +7,11 @@ class ChatSession(Base):
     __tablename__ = "chat_sessions"
 
     id = Column(Integer, primary_key=True, index=True)
+    firebase_uid = Column(String(128), nullable=False, index=True)  # Firebase user ID
     created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Index for efficient queries by user
+    __table_args__ = (Index('idx_firebase_uid', 'firebase_uid'),)
     
     interactions = relationship("Interaction", back_populates="session", cascade="all, delete-orphan")
 

@@ -59,10 +59,24 @@ docker-compose up -d --build
 
 - [Architecture Diagram and Details](docs/ARCHITECTURE.md)
 - [Project Wiki](docs/WIKI.md)
+- [Firebase Authentication Setup](docs/FIREBASE_SETUP.md)
+
+## Architectural Decisions
+
+### HTTP vs gRPC
+We chose **HTTP (REST)** over gRPC to minimize server complexity and resource usage. While gRPC offers lower latency for streaming, HTTP is stateless, easier to scale, and sufficient for the current "User Speaks -> Processing -> Response" flow where client-side VAD (Voice Activity Detection) handles the cutoff.
+
+### Python Services vs n8n
+We implemented a **Custom Python Service using direct Ollama Client integration** rather than n8n Agent nodes.
+- **Why**: We require low-latency, granular control over the context window and chat history which "black box" agent nodes often abstract away.
+- **Implementation**: We use a pure `OllamaClient` in `src/models` to interact directly with the LLM. This allows strict typing of input/output and simpler debugging integration with the rest of our application logic.
+- **Benefit**: Easier testing (100% coverage), better performance, and ensures the "brain" of the VR avatar behaves exactly as defined without overhead from an orchestration platform.
 
 ## API Documentation
 
 The API is documented using Swagger. Once running, access it at `/apidocs`.
+
+**Authentication**: All API endpoints require Firebase Authentication. Include the Firebase ID token in the `Authorization` header as `Bearer <token>`. See [Firebase Setup Guide](docs/FIREBASE_SETUP.md) for configuration details.
 
 ## Testing
 
