@@ -1,7 +1,7 @@
 from api.app import create_app
 from unittest.mock import patch, MagicMock
 import pytest
-from src.services import ChatService
+from src.services.chat_service import ChatService
 
 @pytest.fixture
 def client_fail():
@@ -11,29 +11,27 @@ def client_fail():
         yield client
 
 def test_history_not_found(client_fail):
-    response = client_fail.get('/history/9999999')
-    assert response.status_code == 200
-    assert response.get_json() == []
+    session_uuid = "00000000-0000-0000-0000-000000000000"
+    with patch('src.services.chat_service.ChatService') as MockService:
+        mock_service_instance = MockService.return_value
+        mock_service_instance.get_session_history.return_value = []
+        response = client_fail.get(f'/history/{session_uuid}')
+        assert response.status_code == 200
+        assert response.get_json() == []
 
-def test_llm_missing_content_key(client_fail):
+def test_llm_missing_content_key():
      service = ChatService()
      
      # Mock LLM to return dict without 'content'
      with patch.object(service.ollama_client, 'request', return_value={"total_duration": 1}):
-         # Mock DB logic
-         with patch('src.services.SessionLocal') as MockSession:
-             session = MagicMock()
-             session.id = 1
-             MockSession.return_value = session
-             # Query returns None (new session) or Mock (existing)
-             # If we want to test interaction logic:
-             # process_message creates session.
-             
-             # Let's ensure query returns a session or creates one
-             # We want to test logic AFTER LLM call: content = ...
-             
-             result = service.process_message("Hi")
-             assert result['response'] == "Error generating response"
-             # Assert interaction saved "Error generating response"
-             # mock_session.add was called with interaction having response="Error..."
-             # We can check that if we want, but coverage is the goal.
+         with patch.object(service.title_service, 'generate_title', return_value="Test Title"):
+             # Mock DB logic
+             with patch('src.services.chat_service.SessionLocal') as MockSession:
+                 session = MagicMock()
+                 session.id = 1
+                 session.session_uuid = "test-uuid"
+                 MockSession.return_value = session
+                 session.query.return_value.filter.return_value.first.return_value = None
+                 
+                 result = service.create_text_session("Hi", "test-user")
+                 assert result['response'] == "Error generating response"

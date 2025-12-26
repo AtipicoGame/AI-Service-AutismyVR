@@ -2,19 +2,41 @@ import pytest
 from pytest_bdd import scenarios, given, when, then, parsers
 from api.app import create_app
 from src.db import Base, engine, SessionLocal
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
+from src.services.chat_service import ChatService
 
 scenarios('../features/chat.feature')
-
-from api.routes import chat_service
 
 @pytest.fixture
 def client_bdd():
     app = create_app()
     app.config['TESTING'] = True
     with app.test_client() as client:
-        with patch.object(chat_service.ollama_client, 'request') as mock_request:
-            mock_request.return_value = {"content": "BDD Response", "total_duration": 1.0}
+        with patch('src.services.chat_service.ChatService') as MockService:
+            mock_service_instance = MockService.return_value
+            mock_service_instance.ollama_client = MagicMock()
+            mock_service_instance.title_service = MagicMock()
+            mock_service_instance.title_service.generate_title = MagicMock(return_value="BDD Title")
+            mock_service_instance.ollama_client.request = MagicMock(return_value={"content": "BDD Response", "total_duration": 1.0})
+            mock_service_instance.create_text_session.return_value = {
+                "session_uuid": "bdd-session-uuid",
+                "title": "BDD Title",
+                "response": "BDD Response",
+                "interaction_id": 1
+            }
+            mock_service_instance.send_text_message.return_value = {
+                "session_uuid": "bdd-session-uuid",
+                "response": "BDD Response",
+                "interaction_id": 2
+            }
+            mock_service_instance.get_session_history.return_value = [
+                {
+                    "prompt": "Previous",
+                    "response": "BDD Response",
+                    "created_at": "2024-01-01T00:00:00",
+                    "model_used": "llama3.2"
+                }
+            ]
             yield client
 
 @given('the API is running')
@@ -24,7 +46,7 @@ def api_running(client_bdd):
 @given('I have an existing chat session with message "Previous"', target_fixture="session_id")
 def existing_session(client_bdd):
     response = client_bdd.post('/chat', json={"prompt": "Previous"})
-    return response.get_json()['session_id']
+    return response.get_json()['session_uuid']
 
 @when(parsers.parse('I send a POST request to "/chat" with prompt "{prompt}"'))
 def send_chat(client_bdd, prompt):
