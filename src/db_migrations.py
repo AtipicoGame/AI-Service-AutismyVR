@@ -12,6 +12,18 @@ def is_sqlite():
     """Check if the database is SQLite."""
     return engine.dialect.name == 'sqlite'
 
+def column_exists(connection, table_name, column_name):
+    """Check if a column exists in a table (SQLite only)."""
+    if not is_sqlite():
+        return False
+    
+    try:
+        result = connection.execute(text(f"PRAGMA table_info({table_name})"))
+        columns = [row[1] for row in result]  # Column name is at index 1
+        return column_name.lower() in [col.lower() for col in columns]
+    except Exception:
+        return False
+
 def get_migration_files():
     """
     Get all migration SQL files sorted by their numeric prefix.
@@ -89,10 +101,74 @@ def run_migrations():
                             continue
                         # Replace UUID type with TEXT for SQLite
                         statement = statement.replace('UUID', 'TEXT')
+                        
+                        # Process ALTER TABLE ADD COLUMN statements for SQLite
+                        # SQLite doesn't support IF NOT EXISTS in ALTER TABLE ADD COLUMN
+                        if 'ALTER TABLE' in statement.upper() and 'ADD COLUMN' in statement.upper():
+                            # Extract table name
+                            table_name_match = re.search(r'ALTER TABLE\s+(\w+)', statement, re.IGNORECASE)
+                            if table_name_match:
+                                table_name = table_name_match.group(1)
+                                
+                                # Remove IF NOT EXISTS from the statement
+                                statement_no_if = re.sub(r'\s+IF\s+NOT\s+EXISTS\s+', ' ', statement, flags=re.IGNORECASE)
+                                
+                                # Split by ", ADD COLUMN" to separate multiple ADD COLUMN clauses
+                                # But preserve the ALTER TABLE part for the first one
+                                parts = re.split(r',\s*ADD\s+COLUMN\s+', statement_no_if, flags=re.IGNORECASE)
+                                
+                                if len(parts) > 1:
+                                    # Multiple ADD COLUMN clauses - process each separately
+                                    # First part: "ALTER TABLE table_name ADD COLUMN col1 def1"
+                                    first_part = parts[0]
+                                    first_col_match = re.search(r'ADD\s+COLUMN\s+(\w+)\s+(.+)', first_part, re.IGNORECASE | re.DOTALL)
+                                    if first_col_match:
+                                        col_name = first_col_match.group(1)
+                                        col_def = first_col_match.group(2).strip().rstrip(',')
+                                        if not column_exists(connection, table_name, col_name):
+                                            try:
+                                                connection.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_def}"))
+                                            except Exception as e:
+                                                if 'duplicate column name' not in str(e).lower():
+                                                    raise
+                                                print(f"  Column {col_name} already exists in {table_name}, skipping...")
+                                        
+                                    # Remaining parts: "col2 def2", "col3 def3", etc.
+                                    for part in parts[1:]:
+                                        # Remove trailing comma and semicolon
+                                        part = part.strip().rstrip(';').rstrip(',')
+                                        col_match = re.match(r'(\w+)\s+(.+)', part, re.DOTALL)
+                                        if col_match:
+                                            col_name = col_match.group(1)
+                                            col_def = col_match.group(2).strip()
+                                            if not column_exists(connection, table_name, col_name):
+                                                try:
+                                                    connection.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_def}"))
+                                                except Exception as e:
+                                                    if 'duplicate column name' not in str(e).lower():
+                                                        raise
+                                                    print(f"  Column {col_name} already exists in {table_name}, skipping...")
+                                    
+                                    # Skip the original statement since we processed it separately
+                                    continue
+                                else:
+                                    # Single ADD COLUMN - remove IF NOT EXISTS and check before executing
+                                    single_match = re.search(r'ADD\s+COLUMN\s+(?:IF\s+NOT\s+EXISTS\s+)?(\w+)', statement, re.IGNORECASE)
+                                    if single_match:
+                                        col_name = single_match.group(1)
+                                        if column_exists(connection, table_name, col_name):
+                                            print(f"  Column {col_name} already exists in {table_name}, skipping...")
+                                            continue
+                                        # Remove IF NOT EXISTS for single column case
+                                        statement = statement_no_if
                     
                     try:
                         connection.execute(text(statement))
                     except Exception as e:
+                        # For SQLite, handle duplicate column errors gracefully
+                        if is_sqlite() and ('duplicate column name' in str(e).lower() or 'already exists' in str(e).lower()):
+                            print(f"  Column already exists, skipping: {statement[:50]}...")
+                            continue
                         # For SQLite, some PostgreSQL-specific statements will fail
                         # Log but continue if it's a known incompatibility
                         if is_sqlite() and ('EXTENSION' in str(e) or 'FUNCTION' in str(e) or 'TRIGGER' in str(e)):
