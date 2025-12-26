@@ -65,7 +65,7 @@ class ChatService:
         Send a message to an existing text chat session.
         
         Args:
-            session_uuid: Session UUID
+            session_uuid: Session UUID (string)
             prompt: Message text
             firebase_uid: Firebase user ID
             
@@ -74,8 +74,21 @@ class ChatService:
         """
         db = SessionLocal()
         try:
+            # For PostgreSQL, convert string to UUID object
+            # For SQLite, use string directly
+            from src.db import engine
+            import uuid as uuid_lib
+            
+            if engine.dialect.name == 'postgresql':
+                try:
+                    uuid_obj = uuid_lib.UUID(session_uuid)
+                except ValueError:
+                    uuid_obj = session_uuid
+            else:
+                uuid_obj = str(session_uuid)
+            
             session = db.query(ChatSession).filter(
-                ChatSession.session_uuid == session_uuid,
+                ChatSession.session_uuid == uuid_obj,
                 ChatSession.firebase_uid == firebase_uid,
                 ChatSession.mode == ChatMode.TEXT
             ).first()
@@ -114,7 +127,7 @@ class ChatService:
         Get full history of a specific session.
         
         Args:
-            session_uuid: Session UUID
+            session_uuid: Session UUID (string)
             firebase_uid: Firebase user ID
             
         Returns:
@@ -122,8 +135,21 @@ class ChatService:
         """
         db = SessionLocal()
         try:
+            # For PostgreSQL, convert string to UUID object
+            # For SQLite, use string directly
+            from src.db import engine
+            import uuid as uuid_lib
+            
+            if engine.dialect.name == 'postgresql':
+                try:
+                    uuid_obj = uuid_lib.UUID(session_uuid)
+                except ValueError:
+                    uuid_obj = session_uuid
+            else:
+                uuid_obj = str(session_uuid)
+            
             session = db.query(ChatSession).filter(
-                ChatSession.session_uuid == session_uuid,
+                ChatSession.session_uuid == uuid_obj,
                 ChatSession.firebase_uid == firebase_uid
             ).first()
             

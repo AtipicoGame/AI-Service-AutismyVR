@@ -13,11 +13,13 @@ def client_fail():
 def test_history_not_found(client_fail):
     session_uuid = "00000000-0000-0000-0000-000000000000"
     with patch('src.services.chat_service.ChatService') as MockService:
-        mock_service_instance = MockService.return_value
+        mock_service_instance = MagicMock()
+        MockService.return_value = mock_service_instance
         mock_service_instance.get_session_history.return_value = []
-        response = client_fail.get(f'/history/{session_uuid}')
-        assert response.status_code == 200
-        assert response.get_json() == []
+        with patch('src.controllers.chat_controller.chat_service', mock_service_instance):
+            response = client_fail.get(f'/history/{session_uuid}')
+            assert response.status_code == 200
+            assert response.get_json() == []
 
 def test_llm_missing_content_key():
      service = ChatService()

@@ -1,10 +1,18 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Index, Enum
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID as PostgresUUID
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
-from src.db import Base
+from src.db import Base, engine
 import enum
+
+def get_uuid_column():
+    """Return appropriate UUID column type based on database."""
+    if engine.dialect.name == 'postgresql':
+        return Column(PostgresUUID(as_uuid=True), default=uuid.uuid4, unique=True, nullable=False, index=True)
+    else:
+        # SQLite doesn't support UUID natively, use String
+        return Column(String(36), default=lambda: str(uuid.uuid4()), unique=True, nullable=False, index=True)
 
 class ChatMode(enum.Enum):
     TEXT = "text"
@@ -14,7 +22,7 @@ class ChatSession(Base):
     __tablename__ = "chat_sessions"
 
     id = Column(Integer, primary_key=True, index=True)
-    session_uuid = Column(UUID(as_uuid=True), default=uuid.uuid4, unique=True, nullable=False, index=True)
+    session_uuid = get_uuid_column()
     firebase_uid = Column(String(128), nullable=False, index=True)
     title = Column(String(255), nullable=True)
     mode = Column(Enum(ChatMode), nullable=False, default=ChatMode.TEXT)

@@ -1,8 +1,16 @@
 import os
 import re
 from pathlib import Path
-from sqlalchemy import text
+from sqlalchemy import text, inspect
 from src.db import engine
+
+def is_postgresql():
+    """Check if the database is PostgreSQL."""
+    return engine.dialect.name == 'postgresql'
+
+def is_sqlite():
+    """Check if the database is SQLite."""
+    return engine.dialect.name == 'sqlite'
 
 def get_migration_files():
     """
@@ -61,8 +69,36 @@ def run_migrations():
                 statements = [s.strip() for s in sql_content.split(';') if s.strip()]
                 
                 for statement in statements:
-                    if statement:
+                    if not statement:
+                        continue
+                    
+                    # Skip PostgreSQL-specific commands for SQLite
+                    if is_sqlite():
+                        # Skip CREATE EXTENSION (PostgreSQL only)
+                        if 'CREATE EXTENSION' in statement.upper():
+                            continue
+                        # Skip uuid_generate_v4() function calls (PostgreSQL only)
+                        if 'uuid_generate_v4()' in statement:
+                            # Replace with SQLite-compatible random UUID generation
+                            statement = statement.replace(
+                                'uuid_generate_v4()',
+                                "(lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6))))"
+                            )
+                        # Skip CREATE FUNCTION and TRIGGER (PostgreSQL-specific syntax)
+                        if 'CREATE OR REPLACE FUNCTION' in statement.upper() or 'CREATE TRIGGER' in statement.upper():
+                            continue
+                        # Replace UUID type with TEXT for SQLite
+                        statement = statement.replace('UUID', 'TEXT')
+                    
+                    try:
                         connection.execute(text(statement))
+                    except Exception as e:
+                        # For SQLite, some PostgreSQL-specific statements will fail
+                        # Log but continue if it's a known incompatibility
+                        if is_sqlite() and ('EXTENSION' in str(e) or 'FUNCTION' in str(e) or 'TRIGGER' in str(e)):
+                            print(f"  Skipping PostgreSQL-specific statement for SQLite: {statement[:50]}...")
+                            continue
+                        raise
                 
                 mark_migration_applied(migration_file.name, connection)
                 print(f"✓ Migration {migration_file.name} completed successfully")
@@ -114,17 +150,17 @@ def mark_migration_applied(version, connection=None):
         connection: Optional existing connection to use (for transactions)
     """
     try:
+        if is_postgresql():
+            sql = "INSERT INTO schema_migrations (version) VALUES (:version) ON CONFLICT DO NOTHING"
+        else:
+            # SQLite doesn't support ON CONFLICT DO NOTHING in older versions, use INSERT OR IGNORE
+            sql = "INSERT OR IGNORE INTO schema_migrations (version) VALUES (:version)"
+        
         if connection:
-            connection.execute(
-                text("INSERT INTO schema_migrations (version) VALUES (:version) ON CONFLICT DO NOTHING"),
-                {"version": version}
-            )
+            connection.execute(text(sql), {"version": version})
         else:
             with engine.connect() as conn:
-                conn.execute(
-                    text("INSERT INTO schema_migrations (version) VALUES (:version) ON CONFLICT DO NOTHING"),
-                    {"version": version}
-                )
+                conn.execute(text(sql), {"version": version})
                 conn.commit()
     except Exception as e:
         print(f"Error marking migration as applied: {e}")

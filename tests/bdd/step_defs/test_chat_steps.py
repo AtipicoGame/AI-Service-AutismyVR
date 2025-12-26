@@ -13,11 +13,8 @@ def client_bdd():
     app.config['TESTING'] = True
     with app.test_client() as client:
         with patch('src.services.chat_service.ChatService') as MockService:
-            mock_service_instance = MockService.return_value
-            mock_service_instance.ollama_client = MagicMock()
-            mock_service_instance.title_service = MagicMock()
-            mock_service_instance.title_service.generate_title = MagicMock(return_value="BDD Title")
-            mock_service_instance.ollama_client.request = MagicMock(return_value={"content": "BDD Response", "total_duration": 1.0})
+            mock_service_instance = MagicMock()
+            MockService.return_value = mock_service_instance
             mock_service_instance.create_text_session.return_value = {
                 "session_uuid": "bdd-session-uuid",
                 "title": "BDD Title",
@@ -37,7 +34,8 @@ def client_bdd():
                     "model_used": "llama3.2"
                 }
             ]
-            yield client
+            with patch('src.controllers.chat_controller.chat_service', mock_service_instance):
+                yield client
 
 @given('the API is running')
 def api_running(client_bdd):

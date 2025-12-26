@@ -13,11 +13,13 @@ def client_fail():
 def test_api_history_error(client_fail):
     session_uuid = "123e4567-e89b-12d3-a456-426614174000"
     with patch('src.services.chat_service.ChatService') as MockService:
-        mock_service_instance = MockService.return_value
+        mock_service_instance = MagicMock()
+        MockService.return_value = mock_service_instance
         mock_service_instance.get_session_history.side_effect = Exception("History Error")
-        response = client_fail.get(f'/history/{session_uuid}')
-        assert response.status_code == 500
-        assert "History Error" in response.get_json()['error']
+        with patch('src.controllers.chat_controller.chat_service', mock_service_instance):
+            response = client_fail.get(f'/history/{session_uuid}')
+            assert response.status_code == 500
+            assert "History Error" in response.get_json()['error']
 
 def test_service_db_rollback():
     # Test that rollback happens on error
