@@ -10,6 +10,36 @@ This repository provides AI services for the AutismyVR platform, including a Fla
 - **Services**: Shared logic in `src/` for consistent behavior across API and UI.
 - **Models**: Abstraction layer for LLM (Ollama) and other AI models.
 
+## Project Structure
+
+```
+src/
+├── models/              # SQLAlchemy database models
+│   ├── __init__.py
+│   └── chat_models.py
+├── services/            # Business logic layer
+│   ├── __init__.py
+│   ├── chat_service.py
+│   ├── audio_service.py
+│   └── title_service.py
+├── clients/             # External service clients
+│   ├── __init__.py
+│   ├── ollama_client.py
+│   ├── whisper_client.py
+│   ├── tts_client.py
+│   └── liveportrait_client.py
+├── controllers/         # RESTful API controllers
+│   ├── __init__.py
+│   ├── chat_controller.py
+│   └── audio_controller.py
+├── auth.py              # Firebase authentication
+└── db.py                # Database configuration
+
+api/
+├── routes.py            # Route registration
+└── app.py               # Flask application factory
+```
+
 ## Getting Started
 
 ### Prerequisites
@@ -19,14 +49,20 @@ This repository provides AI services for the AutismyVR platform, including a Fla
 
 ### Running with Docker (Recommended)
 
-To start the entire stack (Postgres, API, UI):
+To start the entire stack (Postgres, API, UI, Whisper, TTS, LivePortrait):
 
 ```bash
 docker-compose up -d --build
 ```
 
+Services:
 - **API Swagger**: http://localhost:5000/apidocs
 - **Streamlit UI**: http://localhost:8501
+- **Whisper API**: http://localhost:8000
+- **TTS API**: http://localhost:8001
+- **LivePortrait API**: http://localhost:8002
+
+**Note**: For Mac users, GPU services will run on CPU. For NVIDIA GPU support on Windows/Linux, ensure Docker Desktop has GPU support enabled.
 
 ### Local Development
 
@@ -74,11 +110,46 @@ We implemented a **Custom Python Service using direct Ollama Client integration*
 
 ## API Documentation
 
-The API is documented using Swagger. Once running, access it at `/apidocs`.
+The API follows **RESTful design principles**, using clear resource-based endpoints and appropriate HTTP methods. All endpoints are documented using Swagger. Once running, access it at `/apidocs`.
 
-**Authentication**: All API endpoints require Firebase Authentication in staging and production environments. Include the Firebase ID token in the `Authorization` header as `Bearer <token>`. See [Firebase Setup Guide](docs/FIREBASE_SETUP.md) for configuration details.
+### API Endpoints
+
+**Text Chat:**
+- `POST /chat` - Create a new text chat session
+- `POST /chat/:session_uuid` - Send a message to an existing text session
+
+**Audio Chat:**
+- `POST /audio2audio` - Create a new audio chat session (receives audio file)
+- `POST /audio2audio/:session_uuid` - Send audio to an existing audio session
+
+**History:**
+- `GET /history` - List all sessions (dev: all interactions, stag/prod: session list)
+- `GET /history/:session_uuid` - Get full history of a specific session
+
+### Authentication
+
+All API endpoints require Firebase Authentication in staging and production environments. Include the Firebase ID token in the `Authorization` header as `Bearer <token>`. See [Firebase Setup Guide](docs/FIREBASE_SETUP.md) for configuration details.
 
 **Development Mode**: When `ENV_LEVEL=dev` (default), Firebase authentication is bypassed for testing purposes. In this mode, all requests are automatically authenticated with a mock user (`dev-user`). This allows testing the API without Firebase credentials. **Note**: Authentication bypass is only available in development. Staging (`ENV_LEVEL=stag`) and production (`ENV_LEVEL=prod`) environments require valid Firebase tokens.
+
+### LivePortrait Integration
+
+LivePortrait can be enabled via:
+- **Environment variable**: `LIVEPORTRAIT_ENABLED=true` (default: `false`)
+- **Query parameter**: `?liveportrait=true` (overrides environment variable)
+
+When enabled, audio responses include LivePortrait avatar animation data.
+
+### GPU Support
+
+The Docker Compose configuration supports GPU acceleration for AI services:
+- **NVIDIA GPUs (Windows/Linux)**: Automatically uses GPU via Docker GPU runtime
+- **Mac (Metal)**: Services run on CPU by default. For Metal acceleration, configure services to run directly on host or use Metal-compatible containers.
+
+Services that use GPU:
+- **Whisper**: Audio transcription
+- **TTS (Piper)**: Text-to-speech synthesis
+- **LivePortrait**: Avatar animation generation
 
 ## Testing
 

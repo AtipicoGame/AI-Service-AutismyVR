@@ -9,6 +9,7 @@ services:
       POSTGRES_DB: autismyvr
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U user -d autismyvr"]
       interval: 5s
@@ -24,11 +25,66 @@ services:
       - DATABASE_URL=postgresql://user:password@postgres:5432/autismyvr
       - OLLAMA_HOST=http://host.docker.internal:11434
       - ENV_LEVEL=dev
+      - WHISPER_API_URL=http://whisper:8000
+      - TTS_API_URL=http://tts:8001
+      - LIVEPORTRAIT_API_URL=http://liveportrait:8002
+      - LIVEPORTRAIT_ENABLED=false
     depends_on:
       postgres:
         condition: service_healthy
+      whisper:
+        condition: service_started
+      tts:
+        condition: service_started
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+  whisper:
+    image: onerahmet/openai-whisper-asr-webservice:latest-gpu
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    ports:
+      - "8000:9000"
+    environment:
+      - ASR_MODEL=base
+      - ASR_ENGINE=openai_whisper
+    volumes:
+      - whisper_cache:/root/.cache
+    # For Mac (Metal), remove GPU section and use CPU
+
+  tts:
+    image: synesthesiam/piper-tts:latest
+    ports:
+      - "8001:5000"
+    environment:
+      - PIPER_MODEL=en_US-lessac-medium
+    volumes:
+      - tts_models:/app/models
+    # For Mac, use CPU version
+
+  liveportrait:
+    build:
+      context: ./liveportrait-service
+      dockerfile: Dockerfile
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    ports:
+      - "8002:8002"
+    environment:
+      - ENABLED=false
+    volumes:
+      - liveportrait_models:/models
+    # For Mac, remove GPU section
 
   streamlit:
     build: .
@@ -46,3 +102,6 @@ services:
 
 volumes:
   postgres_data:
+  whisper_cache:
+  tts_models:
+  liveportrait_models:

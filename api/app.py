@@ -31,13 +31,13 @@ def create_app():
     # Register Blueprints
     app.register_blueprint(api_bp)
     
-    # Initialize DB (if needed here, or in entrypoint)
-    # init_db() # Better to run via migration script or entrypoint, but for now:
+    # Initialize DB with automatic migrations
     with app.app_context():
         try:
             init_db()
         except Exception as e:
             print(f"DB Init failed (expected during build if db not ready): {e}")
+            # Don't raise - allow app to start even if DB is not ready (for Docker Compose)
             
     return app
 

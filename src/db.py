@@ -19,6 +19,21 @@ def get_db():
         db.close()
 
 def init_db():
-    # Import models here to avoid circular changes
-    from src.models import ChatSession, Interaction
-    Base.metadata.create_all(bind=engine)
+    """
+    Initialize database: run SQL migrations first, then create SQLAlchemy tables.
+    """
+    from src.db_migrations import run_migrations, check_migrations_table
+    
+    try:
+        print("Initializing database...")
+        
+        check_migrations_table()
+        run_migrations()
+        
+        from src.models.chat_models import ChatSession, Interaction
+        Base.metadata.create_all(bind=engine)
+        
+        print("Database initialization completed successfully")
+    except Exception as e:
+        print(f"Database initialization error: {e}")
+        raise
