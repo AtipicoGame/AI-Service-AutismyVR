@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15
@@ -20,7 +18,7 @@ services:
     build: .
     command: python api/app.py
     ports:
-      - "5000:5000"
+      - "5001:5000"
     environment:
       - DATABASE_URL=postgresql://user:password@postgres:5432/autismyvr
       - OLLAMA_HOST=http://host.docker.internal:11434
@@ -58,7 +56,7 @@ services:
     # For Mac (Metal), remove GPU section and use CPU
 
   tts:
-    image: synesthesiam/piper-tts:latest
+    image: xnetinho/piper-tts:latest
     ports:
       - "8001:5000"
     environment:

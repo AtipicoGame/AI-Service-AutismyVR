@@ -56,7 +56,7 @@ docker-compose up -d --build
 ```
 
 Services:
-- **API Swagger**: http://localhost:5000/apidocs
+- **API Swagger**: http://localhost:5001/apidocs
 - **Streamlit UI**: http://localhost:8501
 - **Whisper API**: http://localhost:8000
 - **TTS API**: http://localhost:8001

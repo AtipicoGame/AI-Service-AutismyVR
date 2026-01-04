@@ -86,7 +86,7 @@ Todos os endpoints agora requerem autenticação:
 ## Exemplo de Requisição
 
 ```bash
-curl -X POST http://localhost:5000/chat \
+curl -X POST http://localhost:5001/chat \
   -H "Authorization: Bearer <firebase_id_token>" \
   -H "Content-Type: application/json" \
   -d '{"prompt": "Hello!", "session_id": null}'
@@ -112,7 +112,7 @@ curl -X POST http://localhost:5000/chat \
 ### 1. Teste Manual
 
 1. Obtenha um token do Firebase (via Unity ou Firebase Console)
-2. Use o Swagger em `http://localhost:5000/apidocs`
+2. Use o Swagger em `http://localhost:5001/apidocs`
 3. Clique em "Authorize" e cole o token
 4. Teste os endpoints
 
